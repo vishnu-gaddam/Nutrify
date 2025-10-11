@@ -4,6 +4,15 @@ import cors from "cors";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 
+// Handle preflight requests for all routes
+app.options('*', cors({
+  origin: process.env.NODE_ENV === "production"
+    ? ["https://nutrify-nu.vercel.app"]
+    : ["http://localhost:3000"],
+  credentials: true,
+}));
+
+
 // Routes
 import userRoutes from "./routes/userRoutes.js";
 import mealPlanRoutes from "./routes/mealPlanRoutes.js";
