@@ -1,0 +1,42 @@
+{
+  "name": "nutritracker-mern",
+  "version": "1.0.0",
+  "description": "Full Stack NutriTracker Health Application",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install",
+    "install-all": "npm run install-backend && npm run install-frontend",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mern",
+    "health",
+    "nutrition",
+    "bmi",
+    "fullstack",
+    "react",
+    "nodejs",
+    "mongodb",
+    "express"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^3.1.2"
+  }
+}
