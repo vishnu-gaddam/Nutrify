@@ -21,7 +21,7 @@ const app = express();
 // ✅ Allowed origins
 const allowedOrigins =
   process.env.NODE_ENV === "production"
-    ? ["https://nutrify-nu.vercel.app"]
+    ? ["https://nutrify-nu.vercel.app"] 
     : ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 // ✅ CORS middleware
@@ -54,11 +54,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // ✅ MongoDB connection
+// ✅ Validate MONGO_URI before connecting
+const mongoUri = process.env.MONGO_URI;
+
+if (!mongoUri) {
+  console.error("❌ FATAL ERROR: MONGO_URI is not defined in environment variables.");
+  console.error("👉 Go to Render Dashboard → Environment Variables and add MONGO_URI");
+  process.exit(1);
+}
+
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log("✅ MongoDB Connected Successfully"))
   .catch((err) => {
-    console.error(err.message);
+    console.error("❌ MongoDB connection failed:", err.message);
     process.exit(1);
   });
 
