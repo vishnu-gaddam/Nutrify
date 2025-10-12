@@ -161,7 +161,8 @@ function Dashboard() {
     return "Obese";
   };
 
-  // Calculate age
+  // Calculate age  
+  // eslint-disable-next-line
   const calculateAge = (birthDate) => {
     if (!birthDate) return null;
     let birth;
@@ -338,28 +339,28 @@ useEffect(() => {
       setNutritionData(nutritionFromHealth);
 
       // Set profile data
-      const calculatedAge = calculateAge(user.birthDate);
-      const calculatedBMICategory = getBMICategory(user.bmi);
+    // Set profile data
+const calculatedBMICategory = getBMICategory(user.bmi);
 
-      setProfile({
-        ...user,
-        age: calculatedAge,
-        bmiCategory: calculatedBMICategory
-      });
+setProfile({
+  ...user,
+  age: user.age || null, // ✅ Direct from backend
+  bmiCategory: calculatedBMICategory
+});
 
-      // ✅ SET DYNAMIC NUTRITION GOALS BASED ON USER PROFILE
-      if (user.bmi && calculatedAge) {
-        const goals = getNutritionGoals(parseFloat(user.bmi), calculatedAge);
-        setNutritionGoals(goals);
-      } else {
-        // Fallback to normal adult goals if profile incomplete
-        setNutritionGoals({
-          calories: 2000,
-          protein: 65,
-          fats: 62, // (0.28 * 2000) / 9 = 62.22
-          fiber: 25
-        });
-      }
+// ✅ SET DYNAMIC NUTRITION GOALS BASED ON USER PROFILE
+if (user.bmi && user.age) {
+  const goals = getNutritionGoals(parseFloat(user.bmi), user.age);
+  setNutritionGoals(goals);
+} else {
+  // Fallback to normal adult goals if profile incomplete
+  setNutritionGoals({
+    calories: 2000,
+    protein: 65,
+    fats: 62, // (0.28 * 2000) / 9 = 62.22
+    fiber: 25
+  });
+}
     } catch (error) {
       console.error("Error fetching data:", error);
       // Fallback: use health data only
@@ -388,6 +389,12 @@ useEffect(() => {
         setSavedMeals([]);
       }
       
+      // Set minimal profile data even in error case
+      setProfile({
+        ...user,
+        age: user.age || null,
+        bmiCategory: getBMICategory(user.bmi)
+      });
       // Set fallback goals
       setNutritionGoals({
         calories: 2000,

@@ -32,6 +32,12 @@ const userSchema = new mongoose.Schema(
         return this.weight / ((this.height / 100) * (this.height / 100));
       },
     },
+    // ✅ ADD THIS FIELD:
+    activityLevel: {
+      type: String,
+      enum: ['sedentary', 'light', 'moderate', 'active', 'very-active'],
+      default: 'moderate'
+    },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     progress: [progressSchema],
     isActive: { type: Boolean, default: true },

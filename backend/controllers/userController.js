@@ -14,7 +14,7 @@ const generateToken = (id, role, name) => {
 // @access Public
 export const registerUser = async (req, res) => {
   try {
-    const { name, age, gender, height, weight, email, password, role } = req.body;
+    const { name, age, gender, height, weight, email, password, role, activityLevel } = req.body;
 
     if (!name || !age || !gender || !height || !weight || !email || !password) {
       return res.status(400).json({ message: "Please provide all required fields" });
@@ -40,6 +40,7 @@ export const registerUser = async (req, res) => {
       password: hashedPassword,
       bmi,
       role: role || "user",
+      activityLevel: activityLevel || "moderate", // ✅ Added with default
     });
 
     if (user) {
@@ -61,6 +62,7 @@ export const registerUser = async (req, res) => {
           bmiCategory: user.getBMICategory(),
           role: user.role,
           lastLogin: user.lastLogin,
+          activityLevel: user.activityLevel, // ✅ Added to response
         },
       });
     } else {
@@ -113,6 +115,7 @@ export const loginUser = async (req, res) => {
       bmiCategory: user.getBMICategory(),
       role: user.role,
       lastLogin: user.lastLogin,
+      activityLevel: user.activityLevel, // ✅ Added to response
       },
     });
   } catch (error) {
@@ -143,6 +146,7 @@ export const getUserProfile = async (req, res) => {
       progress: user.progress.slice(-10),
       createdAt: user.createdAt,
       lastLogin: user.lastLogin,
+      activityLevel: user.activityLevel, // ✅ Added to response
     });
   } catch (error) {
     console.error("Get profile error:", error);
@@ -158,7 +162,7 @@ export const updateUserProfile = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { name, age, height, weight, email } = req.body;
+    const { name, age, height, weight, email, activityLevel } = req.body; // ✅ Added activityLevel
 
     if (name) user.name = name.trim();
     if (age) user.age = parseInt(age);
@@ -171,6 +175,7 @@ export const updateUserProfile = async (req, res) => {
       }
     }
     if (email) user.email = email.toLowerCase();
+    if (activityLevel !== undefined) user.activityLevel = activityLevel; // ✅ Added this line
 
     const updatedUser = await user.save();
 
@@ -186,6 +191,7 @@ export const updateUserProfile = async (req, res) => {
         weight: updatedUser.weight,
         bmi: updatedUser.bmi.toFixed(1),
         bmiCategory: updatedUser.getBMICategory(),
+        activityLevel: updatedUser.activityLevel, // ✅ Added to response
       },
     });
   } catch (error) {
@@ -238,6 +244,7 @@ export const getAllUsers = async (req, res) => {
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       isActive: user.isActive,
+      activityLevel: user.activityLevel, // ✅ Added to admin response
     }));
 
     res.json({ count: users.length, users: usersWithStats });
