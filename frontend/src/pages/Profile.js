@@ -3,8 +3,10 @@ import { useAuth } from "../utils/authContext";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API_BASE = "http://localhost:5001/api/meals";
-const USER_API_BASE = "http://localhost:5001/api/users";
+//const API_BASE = "http://localhost:5001/api/meals";
+//const USER_API_BASE = "http://localhost:5001/api/users";
+const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
+const USER_API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/users";
 
 const Profile = () => {
   const { user, logout, updateUser } = useAuth();

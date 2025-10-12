@@ -25,7 +25,8 @@ ChartJS.register(
   Legend
 );
 
-const API_BASE = "http://localhost:5001/api/health-data";
+//const API_BASE = "http://localhost:5001/api/health-data";
+const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/health-data";
 
 const HealthAnalytics = () => {
   const { user } = useAuth();

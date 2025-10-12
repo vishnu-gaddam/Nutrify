@@ -3,8 +3,8 @@ import axios from "axios";
 import { useAuth } from "../utils/authContext";
 import { Link } from "react-router-dom";
 
-const API_BASE = "http://localhost:5001/api/meals";
-
+// const API_BASE = "http://localhost:5001/api/meals";
+const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
 // Fixed category order
 const CATEGORY_ORDER = ["Breakfast", "Lunch", "Snack", "Dinner"];
 
