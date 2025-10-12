@@ -2,17 +2,19 @@ import { useState, useEffect, useMemo } from "react";
 import axios from "axios";
 import { useAuth } from "../utils/authContext";
 import { Link, useNavigate } from "react-router-dom";
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 
-// API Bases
-const HEALTH_API_BASE = "http://localhost:5001/api/health-data";
-// eslint-disable-next-line
-const MEALS_API_BASE = "http://localhost:5001/api/meals";
+// ------------ IMPORTANT: use env var for API base (works locally & prod) -------------
+const API_HOST = process.env.REACT_APP_API_BASE || "http://localhost:5001";
+// Health endpoints
+const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
+// (meals API not used here but kept for reference)
+// const MEALS_API_BASE = `${API_HOST}/api/meals`;
 
-// ---------- Progress Bar ----------
+// ---------- Progress Bar (unchanged) ----------
 const ProgressBar = ({ label, current, goal, unit, color = "bg-blue-500" }) => {
   const percentage = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
   return (
@@ -34,7 +36,7 @@ const ProgressBar = ({ label, current, goal, unit, color = "bg-blue-500" }) => {
   );
 };
 
-// ---------- Stat Card ----------
+// ---------- Stat Card (unchanged) ----------
 const StatCard = ({ title, value, subtitle, icon, color, isBMI = false }) => (
   <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
     <div className="flex items-center justify-between">
@@ -56,10 +58,10 @@ const StatCard = ({ title, value, subtitle, icon, color, isBMI = false }) => (
   </div>
 );
 
-// ---------- Health Status Card ----------
+// ---------- Health Status Card (unchanged) ----------
 const HealthStatusCard = ({ bmi, bmiCategory, age, gender }) => {
   const getBMIColor = (category) => {
-    switch(category) {
+    switch (category) {
       case 'Underweight': return 'bg-blue-100 text-blue-800';
       case 'Normal': return 'bg-green-100 text-green-800';
       case 'Overweight': return 'bg-yellow-100 text-yellow-800';
@@ -69,7 +71,7 @@ const HealthStatusCard = ({ bmi, bmiCategory, age, gender }) => {
   };
 
   const getBMIRecommendation = (category) => {
-    switch(category) {
+    switch (category) {
       case 'Underweight': return 'Consider increasing calorie intake with nutrient-dense foods';
       case 'Normal': return 'Great job! Maintain your current healthy lifestyle';
       case 'Overweight': return 'Focus on portion control and regular physical activity';
@@ -114,7 +116,7 @@ const HealthStatusCard = ({ bmi, bmiCategory, age, gender }) => {
   );
 };
 
-// ---------- Quick Action Card ----------
+// ---------- Quick Action Card (unchanged) ----------
 const QuickActionCard = ({ title, description, icon, onClick, color }) => (
   <button
     onClick={onClick}
@@ -138,16 +140,17 @@ const QuickActionCard = ({ title, description, icon, onClick, color }) => (
 
 // ---------- Main Dashboard ----------
 function Dashboard() {
-  const { user } = useAuth();
+  // IMPORTANT: include token from auth context if available
+  const { user, token } = useAuth(); // <-- token used for Authorization header
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);// eslint-disable-next-line
+  const [profile, setProfile] = useState(null);
   const [todayData, setTodayData] = useState(null);
   const [weeklyData, setWeeklyData] = useState([]);
   const [savedMeals, setSavedMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [nutritionData, setNutritionData] = useState({
     calories: 0, protein: 0, fats: 0, fiber: 0
-  });// eslint-disable-next-line
+  });
   const [nutritionGoals, setNutritionGoals] = useState({
     calories: 2000, protein: 75, fats: 60, fiber: 25
   });
@@ -155,14 +158,15 @@ function Dashboard() {
   // Calculate BMI category
   const getBMICategory = (bmi) => {
     if (!bmi) return null;
-    if (bmi < 18.5) return "Underweight";
-    if (bmi < 25) return "Normal";
-    if (bmi < 30) return "Overweight";
+    const b = typeof bmi === 'string' ? parseFloat(bmi) : bmi;
+    if (isNaN(b)) return null;
+    if (b < 18.5) return "Underweight";
+    if (b < 25) return "Normal";
+    if (b < 30) return "Overweight";
     return "Obese";
   };
 
-  // Calculate age  
-  // eslint-disable-next-line
+  // Calculate age (kept for later use)
   const calculateAge = (birthDate) => {
     if (!birthDate) return null;
     let birth;
@@ -184,34 +188,34 @@ function Dashboard() {
   // Calculate active days from weekly health data
   const activeDaysThisWeek = useMemo(() => {
     if (!weeklyData.length) return 0;
-    
+
     return weeklyData.filter(day => {
-      return (day.calories || 0) > 0 || 
-             (day.protein || 0) > 0 || 
-             (day.fat || 0) > 0 || 
-             (day.fiber || 0) > 0;
+      return (day.calories || 0) > 0 ||
+        (day.protein || 0) > 0 ||
+        (day.fat || 0) > 0 ||
+        (day.fiber || 0) > 0;
     }).length;
   }, [weeklyData]);
 
   // Calculate weekly progress data from health data
   const weeklyProgressData = useMemo(() => {
     if (!weeklyData.length) return [];
-    
+
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     return weeklyData.map(day => {
       const date = new Date(day.date);
       return {
-        day: days[date.getDay()],
+        day: days[date.getDay()] || day.date,
         calories: day.calories || 0,
         protein: day.protein || 0,
         fats: day.fat || 0,
         fiber: day.fiber || 0,
-        meals: 0
+        meals: day.mealCount || 0
       };
     });
   }, [weeklyData]);
 
-  // Calculate macro distribution
+  // Macro distribution
   const macroData = useMemo(() => {
     return [
       { name: 'Protein', value: nutritionData.protein, color: '#3b82f6' },
@@ -221,12 +225,12 @@ function Dashboard() {
     ].filter(item => item.value > 0);
   }, [nutritionData]);
 
-  // ✅ FIXED: Get nutrition goals based on BMI and age (same as other pages)
+  // Nutrition goals helper (unchanged logic)
   const getNutritionGoals = (bmi, age) => {
     let bmiCategory;
     const bmiValue = typeof bmi === 'string' ? parseFloat(bmi) : bmi;
-    
-    if (bmiValue < 18.5) bmiCategory = "underweight";
+    if (isNaN(bmiValue)) bmiCategory = "normal";
+    else if (bmiValue < 18.5) bmiCategory = "underweight";
     else if (bmiValue < 25) bmiCategory = "normal";
     else if (bmiValue < 30) bmiCategory = "overweight";
     else bmiCategory = "obese";
@@ -236,7 +240,6 @@ function Dashboard() {
     else if (age >= 21 && age <= 64) ageGroup = "adult";
     else if (age >= 65) ageGroup = "senior";
 
-    // ✅ EXACT SAME GOALS AS YOUR OTHER PAGES
     const goals = {
       teen: {
         underweight: { calories: 2800, protein: 90, fiber: 30, fatPercent: 0.30 },
@@ -268,147 +271,130 @@ function Dashboard() {
   };
 
   // Fetch data from multiple sources
-useEffect(() => {
-  if (!user?.id) {
-    setLoading(false);
-    setProfile(null);
-    setTodayData(null);
-    setWeeklyData([]);
-    setSavedMeals([]);
-    setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-    return;
-  }
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      setProfile(null);
+      setTodayData(null);
+      setWeeklyData([]);
+      setSavedMeals([]);
+      setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+      return;
+    }
 
-  const fetchData = async () => {
-    try {
-      // Fetch TODAY'S data from HealthAnalytics endpoint
-      const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`);
-      const todayData = todayRes.data;
-      setTodayData(todayData);
+    const fetchData = async () => {
+      setLoading(true);
+      // common headers
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // Fetch WEEKLY data from HealthAnalytics endpoint
-      const weeklyRes = await axios.get(`${HEALTH_API_BASE}/weekly?userId=${user.id}`);
-      const weeklyData = weeklyRes.data;
-      setWeeklyData(weeklyData);
-
-      // ✅ DERIVE TODAY'S MEALS FROM HEALTH DATA INSTEAD OF SEPARATE API CALL
-      // Find today's entry in weekly data
-      const today = new Date();
-      const todayString = today.toISOString().split('T')[0];
-      
-      const todayHealthEntry = weeklyData.find(day => {
-        const dayDate = new Date(day.date).toISOString().split('T')[0];
-        return dayDate === todayString;
-      });
-
-      // ✅ Calculate meal count based on nutrition data availability
-      // If today has nutrition data, assume meals were logged
-      let mealCount = 0;
-      if (todayHealthEntry && 
-          (todayHealthEntry.calories > 0 || 
-           todayHealthEntry.protein > 0 || 
-           todayHealthEntry.fat > 0 || 
-           todayHealthEntry.fiber > 0)) {
-        // ✅ Use a reasonable estimate or get actual count from health data if available
-        // For now, we'll use the fact that you have 4 meals based on your data
-        // But ideally, your health API should include mealCount
-        mealCount = 4; // This is temporary - see better solution below
-      }
-
-      // ✅ BETTER SOLUTION: If your health API doesn't provide meal count,
-      // don't show meal count at all, or calculate it differently
-      // For now, let's create a mock savedMeals array with the correct count
-      const mockSavedMeals = Array(mealCount).fill({}).map((_, index) => ({
-        _id: `mock-${index}`,
-        name: `Meal ${index + 1}`,
-        calories: todayHealthEntry?.calories || 0,
-        protein: todayHealthEntry?.protein || 0,
-        fats: todayHealthEntry?.fat || 0,
-        fiber: todayHealthEntry?.fiber || 0
-      }));
-
-      setSavedMeals(mockSavedMeals);
-
-      // Use TODAY'S nutrition data from HealthAnalytics
-      const nutritionFromHealth = {
-        calories: todayData.calories || 0,
-        protein: todayData.protein || 0,
-        fats: todayData.fat || 0,
-        fiber: todayData.fiber || 0
-      };
-      setNutritionData(nutritionFromHealth);
-
-      // Set profile data
-    // Set profile data
-const calculatedBMICategory = getBMICategory(user.bmi);
-
-setProfile({
-  ...user,
-  age: user.age || null, // ✅ Direct from backend
-  bmiCategory: calculatedBMICategory
-});
-
-// ✅ SET DYNAMIC NUTRITION GOALS BASED ON USER PROFILE
-if (user.bmi && user.age) {
-  const goals = getNutritionGoals(parseFloat(user.bmi), user.age);
-  setNutritionGoals(goals);
-} else {
-  // Fallback to normal adult goals if profile incomplete
-  setNutritionGoals({
-    calories: 2000,
-    protein: 65,
-    fats: 62, // (0.28 * 2000) / 9 = 62.22
-    fiber: 25
-  });
-}
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      // Fallback: use health data only
       try {
-        const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`);
-        const todayData = todayRes.data;
-        
+        // TODAY
+        const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`, { headers });
+        const today = todayRes?.data || {};
+        setTodayData(today);
+
+        // WEEKLY
+        const weeklyRes = await axios.get(`${HEALTH_API_BASE}/weekly?userId=${user.id}`, { headers });
+        const weekly = Array.isArray(weeklyRes?.data) ? weeklyRes.data : [];
+        setWeeklyData(weekly);
+
+        // derive savedMeals more robustly:
+        // Prefer mealCount from today (if API provides), otherwise infer from today.mealCount or default to 0
+        const mealCount = (today && (today.mealCount || 0)) || 0;
+
+        const mockSavedMeals = Array.from({ length: mealCount }).map((_, i) => ({
+          _id: `mock-${i}`,
+          name: `Meal ${i + 1}`,
+          calories: today.calories || 0,
+          protein: today.protein || 0,
+          fats: today.fat || 0,
+          fiber: today.fiber || 0
+        }));
+        setSavedMeals(mockSavedMeals);
+
+        // Set nutrition data from today's health entry
         const nutritionFromHealth = {
-          calories: todayData.calories || 0,
-          protein: todayData.protein || 0,
-          fats: todayData.fat || 0,
-          fiber: todayData.fiber || 0
+          calories: today.calories || 0,
+          protein: today.protein || 0,
+          fats: today.fat || 0,
+          fiber: today.fiber || 0
         };
         setNutritionData(nutritionFromHealth);
-        
-        // Set minimal savedMeals based on nutrition data
-        const hasNutritionData = nutritionFromHealth.calories > 0 || 
-                                nutritionFromHealth.protein > 0 || 
-                                nutritionFromHealth.fats > 0 || 
-                                nutritionFromHealth.fiber > 0;
-        setSavedMeals(hasNutritionData ? [{ _id: 'fallback' }] : []);
-        
-      } catch (healthError) {
-        console.error("Fallback health fetch failed:", healthError);
-        setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-        setSavedMeals([]);
-      }
-      
-      // Set minimal profile data even in error case
-      setProfile({
-        ...user,
-        age: user.age || null,
-        bmiCategory: getBMICategory(user.bmi)
-      });
-      // Set fallback goals
-      setNutritionGoals({
-        calories: 2000,
-        protein: 65,
-        fats: 62,
-        fiber: 25
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  fetchData();// eslint-disable-next-line
-}, [user?.id]);
+        // Set profile - keep backend user fields but normalize age and bmiCategory
+        const calculatedBMICategory = getBMICategory(user.bmi);
+        const resolvedAge = user.age || calculateAge(user.birthDate) || null;
+
+        setProfile({
+          ...user,
+          age: resolvedAge,
+          bmiCategory: calculatedBMICategory
+        });
+
+        // Set nutrition goals based on profile
+        if (user.bmi && (resolvedAge !== null)) {
+          const goals = getNutritionGoals(parseFloat(user.bmi), resolvedAge);
+          setNutritionGoals(goals);
+        } else {
+          setNutritionGoals({
+            calories: 2000,
+            protein: 65,
+            fats: 62,
+            fiber: 25
+          });
+        }
+
+      } catch (error) {
+        // Improved error logging for Axios
+        console.error("Error fetching dashboard data:", error?.message || error);
+        console.error("Error details (response):", error?.response?.data || null);
+        console.error("Stack:", error?.stack || null);
+
+        // Fallback: attempt to at least fetch today's data (no weekly)
+        try {
+          const headers = token ? { Authorization: `Bearer ${token}` } : {};
+          const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`, { headers });
+          const today = todayRes?.data || {};
+          setTodayData(today);
+
+          const nutritionFromHealth = {
+            calories: today.calories || 0,
+            protein: today.protein || 0,
+            fats: today.fat || 0,
+            fiber: today.fiber || 0
+          };
+          setNutritionData(nutritionFromHealth);
+
+          const hasNutritionData = nutritionFromHealth.calories > 0 || nutritionFromHealth.protein > 0 || nutritionFromHealth.fats > 0 || nutritionFromHealth.fiber > 0;
+          setSavedMeals(hasNutritionData ? [{ _id: 'fallback' }] : []);
+
+        } catch (healthError) {
+          console.error("Fallback health fetch failed:", healthError?.message || healthError);
+          setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+          setSavedMeals([]);
+        }
+
+        // minimal profile fallback
+        setProfile({
+          ...user,
+          age: user.age || null,
+          bmiCategory: getBMICategory(user.bmi)
+        });
+
+        setNutritionGoals({
+          calories: 2000,
+          protein: 65,
+          fats: 62,
+          fiber: 25
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, token]);
 
   if (loading) {
     return (
@@ -445,15 +431,14 @@ if (user.bmi && user.age) {
   const gender = profile?.gender;
   const mealsToday = savedMeals.length;
 
-  // ✅ Calculate dynamic goals for display
-  const displayGoals = user?.bmi && age ? 
-    getNutritionGoals(parseFloat(user.bmi), age) : 
+  const displayGoals = user?.bmi && age ?
+    getNutritionGoals(parseFloat(user.bmi), age) :
     { calories: 2000, protein: 65, fats: 62, fiber: 25 };
 
   return (
     <div className="min-h-screen bg-[#e1ffd8]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-2 py-8">
-        {/* Hero Section - Centered */}
+        {/* Hero */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-3">
             Welcome back, {profile?.firstName || profile?.name?.split?.(' ')?.[0] || 'User'}! 👋
@@ -463,7 +448,7 @@ if (user.bmi && user.age) {
           </p>
         </div>
 
-        {/* Stats Overview - BMI First */}
+        {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           <StatCard
             title="Body Mass Index"
@@ -514,19 +499,17 @@ if (user.bmi && user.age) {
           />
         </div>
 
-        {/* Main Content Grid - Fixed alignment */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          {/* Health Profile - Fixed height */}
           <div className="lg:col-span-1">
-            <HealthStatusCard 
-              bmi={bmi} 
-              bmiCategory={bmiCategory} 
-              age={age} 
-              gender={gender} 
+            <HealthStatusCard
+              bmi={bmi}
+              bmiCategory={bmiCategory}
+              age={age}
+              gender={gender}
             />
           </div>
 
-          {/* Nutrition Progress - Fixed height */}
           <div className="lg:col-span-2">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-200 h-full">
               <h3 className="text-xl font-bold text-gray-800 mb-6">Today's Nutrition Progress</h3>
@@ -566,29 +549,28 @@ if (user.bmi && user.age) {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
-          {/* Weekly Progress Chart - Enhanced Visibility */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-200">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Weekly Nutrition Progress</h3>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={weeklyProgressData} barSize={24} barGap={2}>
                 <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
-                <XAxis 
-                  dataKey="day" 
-                  stroke="#4b5563" 
-                  fontSize={13} 
+                <XAxis
+                  dataKey="day"
+                  stroke="#4b5563"
+                  fontSize={13}
                   fontWeight={600}
                   tickLine={false}
                 />
-                <YAxis 
-                  stroke="#4b5563" 
-                  fontSize={12} 
+                <YAxis
+                  stroke="#4b5563"
+                  fontSize={12}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(value) => (value >= 1000 ? `${value / 1000}k` : value)}
                 />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'white', 
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'white',
                     borderRadius: '12px',
                     border: '1px solid #e5e7eb',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
@@ -600,7 +582,7 @@ if (user.bmi && user.age) {
                   }}
                   labelStyle={{ fontWeight: '600', color: '#1e293b' }}
                 />
-                <Legend 
+                <Legend
                   wrapperStyle={{ paddingTop: '12px', textAlign: 'center' }}
                   formatter={(value) => {
                     const labels = {
@@ -612,39 +594,14 @@ if (user.bmi && user.age) {
                     return labels[value] || value;
                   }}
                 />
-                <Bar 
-                  dataKey="calories" 
-                  name="Calories" 
-                  fill="#f87171" 
-                  radius={[6, 6, 0, 0]} 
-                  stackId="a"
-                />
-                <Bar 
-                  dataKey="protein" 
-                  name="Protein" 
-                  fill="#60a5fa" 
-                  radius={[6, 6, 0, 0]} 
-                  stackId="a"
-                />
-                <Bar 
-                  dataKey="fats" 
-                  name="Fats" 
-                  fill="#fbbf24" 
-                  radius={[6, 6, 0, 0]} 
-                  stackId="a"
-                />
-                <Bar 
-                  dataKey="fiber" 
-                  name="Fiber" 
-                  fill="#34d399" 
-                  radius={[6, 6, 0, 0]} 
-                  stackId="a"
-                />
+                <Bar dataKey="calories" name="Calories" fill="#f87171" radius={[6, 6, 0, 0]} stackId="a" />
+                <Bar dataKey="protein" name="Protein" fill="#60a5fa" radius={[6, 6, 0, 0]} stackId="a" />
+                <Bar dataKey="fats" name="Fats" fill="#fbbf24" radius={[6, 6, 0, 0]} stackId="a" />
+                <Bar dataKey="fiber" name="Fiber" fill="#34d399" radius={[6, 6, 0, 0]} stackId="a" />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Macro Distribution - 4 elements */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-200">
             <h3 className="text-xl font-bold text-gray-800 mb-6">Today's Nutrition Breakdown</h3>
             {macroData.length > 0 ? (
@@ -662,28 +619,28 @@ if (user.bmi && user.age) {
                     labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
                   >
                     {macroData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color} 
-                        stroke="white" 
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={entry.color}
+                        stroke="white"
                         strokeWidth={2}
                       />
                     ))}
                   </Pie>
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value, name) => {
                       if (name === 'Calories') return [`${Math.round(value)} kcal`, name];
                       return [`${Math.round(value)}g`, name];
                     }}
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
+                    contentStyle={{
+                      backgroundColor: 'white',
                       borderRadius: '12px',
                       border: '1px solid #e5e7eb',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                       fontSize: '14px'
                     }}
                   />
-                  <Legend 
+                  <Legend
                     formatter={(value) => value}
                     layout="horizontal"
                     verticalAlign="bottom"
