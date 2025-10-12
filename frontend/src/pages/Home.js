@@ -10,6 +10,7 @@ import { useAuth } from "../utils/authContext";
     name: "",
     email: "",
     password: "",
+    age: "",   
     height: "",
     weight: "",
     gender: "",
