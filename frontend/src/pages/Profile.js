@@ -64,7 +64,7 @@ useEffect(() => {
     const fetchUserData = async () => {
       try {
         // ✅ Fetch actual user data from backend
-        const response = await axios.get(`${USER_API_BASE}/${user.id}`);
+        const response = await axios.get(`${USER_API_BASE}/me`);
         const userData = response.data;
         
         // Update auth context with backend data
@@ -104,7 +104,7 @@ useEffect(() => {
     };
 
     fetchUserData();// eslint-disable-next-line
-  }, [user?.id, updateUser]);
+  }, [user?.id]);
 
   // Calculate BMI category for display
   const getBMICategory = (bmi) => {
@@ -262,7 +262,7 @@ useEffect(() => {
       };
 
       // ✅ Save to backend first
-      await axios.put(`${USER_API_BASE}/${user.id}`, updatedProfile);
+      await axios.put(`${USER_API_BASE}/me`, updatedProfile);
       
       // ✅ Then update auth context
       updateUser(updatedProfile);
