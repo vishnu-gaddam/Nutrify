@@ -31,37 +31,37 @@ import { useAuth } from "../utils/authContext";
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setNotification("");
+  e.preventDefault();
+  setLoading(true);
+  setNotification("");
 
-    try {
-      const endpoint = isLogin ? "/api/users/login" : "/api/users/signup";
-      const payload = isLogin
-        ? { email: form.email, password: form.password }
-        : form;
+  try {
+    const baseUrl = process.env.REACT_APP_API_BASE_URL;
+    const endpoint = isLogin ? "/api/users/login" : "/api/users/signup";
+    const url = `${baseUrl}${endpoint}`; // ✅ Absolute URL
 
-      const { data } = await axios.post(endpoint, payload);
+    const payload = isLogin
+      ? { email: form.email, password: form.password }
+      : form;
 
-      login(data.user, data.token);
+    const { data } = await axios.post(url, payload); // ✅ Now hits your Render backend
 
-      setNotification(
-        `Welcome${isLogin ? " back" : ""}, ${data.user.name || "User"}!`
-      );
+    login(data.user, data.token);
+    setNotification(`Welcome${isLogin ? " back" : ""}, ${data.user.name || "User"}!`);
 
-      setTimeout(() => {
-        navigate(data.user.role === "admin" ? "/admin" : "/dashboard");
-      }, 500);
-    } catch (error) {
-      const message =
-        error.response?.data?.message ||
-        "Something went wrong. Please try again.";
-      setNotification(message);
-      setTimeout(() => setNotification(""), 4000);
-    } finally {
-      setLoading(false);
-    }
-  };
+    setTimeout(() => {
+      navigate(data.user.role === "admin" ? "/admin" : "/dashboard");
+    }, 500);
+  } catch (error) {
+    const message =
+      error.response?.data?.message ||
+      "Something went wrong. Please try again.";
+    setNotification(message);
+    setTimeout(() => setNotification(""), 4000);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="w-full min-h-screen bg-gray-900 text-white">
