@@ -45,7 +45,7 @@ import { useAuth } from "../utils/authContext";
       ? { email: form.email, password: form.password }
       : form;
 
-    const { data } = await axios.post(url, payload); // ✅ Now hits your Render backend
+    const { data } = await axios.post(url, payload, { withCredentials: true }); // ✅ Now hits your Render backend
 
     login(data.user, data.token);
     setNotification(`Welcome${isLogin ? " back" : ""}, ${data.user.name || "User"}!`);
