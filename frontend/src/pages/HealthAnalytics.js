@@ -541,7 +541,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Sleep Card */}
+        {/* Sleep Card */}
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-xl text-gray-800">Sleep</h2>
@@ -559,9 +559,11 @@ useEffect(() => {
                 <div className="text-xs text-gray-600">Quality</div>
               </div>
             </div>
+            
+            {/* Today's Sleep Goal Progress */}
             <div className="mt-6">
               <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Sleep Goal</span>
+                <span>Sleep Goal (7h)</span>
                 <span>{todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 7) * 100)) : 0}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
@@ -573,9 +575,9 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Activity Card */}
+       {/* Activity Card */}
           <div className="bg-white rounded-xl shadow-md p-6">
-             <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-xl text-gray-800">Activity</h2>
             </div>
 
@@ -590,17 +592,46 @@ useEffect(() => {
               </div>
             </div>
             
+            {/* Today's Activity Goal Progress */}
             <div className="mt-6">
-              <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Activity Goal</span>
-                <span>{healthStats.weeklyGoalCompletion || 0}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="h-2 rounded-full bg-indigo-500" 
-                  style={{ width: `${healthStats.weeklyGoalCompletion || 0}%` }}
-                ></div>
-              </div>
+              {todayData ? (
+                <>
+                  {/* Calculate today's activity progress */}
+                  {(() => {
+                    const stepsProgress = todayData.steps ? Math.min(100, Math.round((todayData.steps / 10000) * 100)) : 0;
+                    const exerciseProgress = todayData.exercise ? Math.min(100, Math.round((todayData.exercise / 30) * 100)) : 0;
+                    const avgProgress = Math.round((stepsProgress + exerciseProgress) / 2);
+                    
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm text-gray-700 mb-1">
+                          <span>Activity Goal</span>
+                          <span>{avgProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="h-2 rounded-full bg-indigo-500" 
+                            style={{ width: `${avgProgress}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Based on 10k steps & 30min exercise
+                        </div>
+                      </>
+                    );
+                  })()}
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between text-sm text-gray-700 mb-1">
+                    <span>Activity Goal</span>
+                    <span>0%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="h-2 rounded-full bg-indigo-500" style={{ width: '0%' }}></div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
