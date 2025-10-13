@@ -8,17 +8,24 @@ import {
 } from "recharts";
 
 // ------------ IMPORTANT: use env var for API base (works locally & prod) -------------
-const API_HOST = process.env.REACT_APP_API_BASE || "http://localhost:5001";
-// Health endpoints
+// const API_HOST = process.env.REACT_APP_API_BASE || "http://localhost:5001";
+// // Health endpoints
+// const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
+// const USER_API_BASE = `${API_HOST}/api/users`;
+// // Health endpoints
+// //const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
+// // Meals endpoint 
+// // eslint-disable-next-line
+// const MEALS_API_BASE = `${API_HOST}/api/meals`;
+// // (meals API not used here but kept for reference)
+// // const MEALS_API_BASE = `${API_HOST}/api/meals`;
+// Clean up any whitespace and use consistent env var name
+const API_HOST = process.env.REACT_APP_API_BASE_URL 
+  ? process.env.REACT_APP_API_BASE_URL.trim() 
+  : "http://localhost:5001";
+
 const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
 const USER_API_BASE = `${API_HOST}/api/users`;
-// Health endpoints
-//const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
-// Meals endpoint 
-// eslint-disable-next-line
-const MEALS_API_BASE = `${API_HOST}/api/meals`;
-// (meals API not used here but kept for reference)
-// const MEALS_API_BASE = `${API_HOST}/api/meals`;
 
 // ---------- Progress Bar (unchanged) ----------
 const ProgressBar = ({ label, current, goal, unit, color = "bg-blue-500" }) => {
