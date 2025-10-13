@@ -2,13 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../utils/authContext";
 
+// Import your meals database
+import mealsDatabase from "../data/meals_database.json";
+
 const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
 
 function MealsPlan() {
   const { user } = useAuth();
 
   // ✅ Track current date as state (ISO string like "2024-06-15")
-  // eslint-disable-next-line
+  // eslint-disable-next-line 
   const [currentDate, setCurrentDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
@@ -104,17 +107,14 @@ function MealsPlan() {
         const allMeals = res.data.meals || [];
         
         // Use the tracked currentDate
-        const today = new Date(currentDate);
-        today.setHours(0, 0, 0, 0);
-        
+        const targetDateStr = currentDate;
+
         const todayMeals = allMeals.filter(meal => {
-          const mealDateField = meal.addedAt || meal.createdAt;
-          if (!mealDateField) return false;
-          
-          const mealDate = new Date(mealDateField);
-          mealDate.setHours(0, 0, 0, 0);
-          
-          return mealDate.getTime() === today.getTime();
+          if (!meal.addedAt && !meal.createdAt) return false;
+          const mealDateStr = new Date(meal.addedAt || meal.createdAt)
+            .toISOString()
+            .split('T')[0];
+          return mealDateStr === targetDateStr;
         });
 
         const categoryMap = {};
@@ -147,81 +147,12 @@ function MealsPlan() {
     };
 
     fetchSavedMeals();
-  }, [user?.id, currentDate]); // ✅ Depend on currentDate
-
-  // ✅ RESET ALL NUTRITION & MEAL STATE WHEN DATE CHANGES
- // ✅ Fetch saved meals for the CURRENT DATE — with pre-reset
-useEffect(() => {
-  if (!user?.id) {
-    // Clear state if no user
-    setAddedMeals({});
-    setSavedMealIds(new Set());
-    setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-    return;
-  }
-
-  const fetchSavedMeals = async () => {
-    // ✅ CRITICAL: Reset state BEFORE fetching to avoid stale UI
-    setAddedMeals({});
-    setSavedMealIds(new Set());
-    setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-    setError("");
-
-    try {
-      const res = await axios.get(`${API_BASE}/saved/${user.id}`);
-      const allMeals = res.data.meals || [];
-
-      // Normalize current date (YYYY-MM-DD)
-      const targetDateStr = currentDate; // e.g., "2024-10-13"
-
-      const todayMeals = allMeals.filter(meal => {
-        if (!meal.addedAt && !meal.createdAt) return false;
-
-        // Extract date part from meal timestamp (handles ISO strings)
-        const mealDateStr = new Date(meal.addedAt || meal.createdAt)
-          .toISOString()
-          .split('T')[0];
-
-        return mealDateStr === targetDateStr;
-      });
-
-      // Only now populate state with TODAY'S meals
-      const categoryMap = {};
-      const idSet = new Set();
-      const nutrients = { calories: 0, protein: 0, fats: 0, fiber: 0 };
-
-      todayMeals.forEach(meal => {
-        if (meal.category) {
-          categoryMap[meal.category] = meal.name;
-        }
-        if (meal._id) {
-          idSet.add(meal._id);
-        }
-        nutrients.calories += meal.calories || 0;
-        nutrients.protein += meal.protein || 0;
-        nutrients.fats += meal.fats || 0;
-        nutrients.fiber += meal.fiber || 0;
-      });
-
-      setAddedMeals(categoryMap);
-      setSavedMealIds(idSet);
-      setAddedNutrients(nutrients);
-
-    } catch (err) {
-      console.error("Failed to fetch saved meals:", err);
-      // Keep state cleared on error
-      setAddedMeals({});
-      setSavedMealIds(new Set());
-      setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-    }
-  };
-
-  fetchSavedMeals();
-}, [user?.id, currentDate]); // Re-run when user or date changes
+  }, [user?.id, currentDate]);
 
   const handleFilterChange = (e) =>
     setFilters({ ...filters, [e.target.name]: e.target.value });
 
+  // ✅ SMART MEAL PLAN GENERATION USING YOUR DATABASE
   const generateMealPlan = async () => {
     if (!user?.bmi || !user?.age || !user?.id) {
       setError("Please complete your profile (BMI and age) to generate a meal plan.");
@@ -231,13 +162,54 @@ useEffect(() => {
     setError("");
 
     try {
-      const { data } = await axios.post(`${API_BASE}/plan`, {
-        bmi: user.bmi,
-        age: user.age,
-        userId: user.id,
-        date: currentDate, // ✅ Use tracked date
+      // Get user category
+      const bmiCategory = user.bmi < 18.5 ? "Underweight" : 
+                         user.bmi < 25 ? "Normal" : 
+                         user.bmi < 30 ? "Overweight" : "Obese";
+      
+      const ageRanges = [
+        { min: 12, max: 20, label: "12–20" },
+        { min: 21, max: 30, label: "21–30" },
+        { min: 31, max: 40, label: "31–40" },
+        { min: 41, max: 50, label: "41–50" },
+        { min: 51, max: 60, label: "51–60" },
+        { min: 61, max: 120, label: "60+" }
+      ];
+      
+      const ageGroup = ageRanges.find(range => 
+        user.age >= range.min && user.age <= range.max
+      )?.label || "21–30";
+
+      // Filter meals for user profile
+      const filteredMeals = mealsDatabase.filter(meal => 
+        meal["Age Group"] === ageGroup && 
+        meal["BMI Category"].includes(bmiCategory)
+      );
+
+      // Group by meal type
+      const mealTypes = ["Breakfast", "Lunch", "Snack", "Dinner"];
+      const newPlan = {};
+
+      mealTypes.forEach(mealType => {
+        const mealsForType = filteredMeals.filter(meal => meal["Meal Type"] === mealType);
+        if (mealsForType.length > 0) {
+          // Select 2 diverse options per category
+          const shuffled = [...mealsForType].sort(() => 0.5 - Math.random());
+          newPlan[mealType] = shuffled.slice(0, 2);
+        }
       });
-      setPlan(data.plan || {});
+
+      setPlan(newPlan);
+      
+      // Optional: Save to backend for analytics
+      await axios.post(`${API_BASE}/plan`, {
+        userId: user.id,
+        plan: newPlan,
+        date: currentDate,
+        bmi: user.bmi,
+        age: user.age
+      });
+      
     } catch (err) {
       console.error("Generate meal plan error:", err);
       setError("Failed to generate meal plan. Please try again.");
@@ -258,25 +230,25 @@ useEffect(() => {
     }
 
     const mappedMeal = {
-      name: meal.name || meal.Dish || "Unnamed Meal",
-      category: meal.category || meal["Meal Type"] || category || "General",
-      calories: meal.calories ?? meal["Calories (kcal)"] ?? 0,
-      protein: meal.protein ?? meal["Protein (g)"] ?? 0,
-      fats: meal.fats ?? meal["Fat (g)"] ?? 0,
-      carbs: meal.carbs ?? meal["Carbs (g)"] ?? 0,
-      fiber: meal.fiber ?? meal["Fiber (g)"] ?? 0,
-      ingredients: meal.ingredients || meal["Ingredients"] || "",
-      notes: meal.notes || meal["Notes"] || "",
-      isFavorite: meal.isFavorite ?? false,
-      addedByUser: meal.addedByUser ?? true,
-      image: meal.image || "/images/default.jpg",
+      name: meal.Dish || "Unnamed Meal",
+      category: meal["Meal Type"] || category || "General",
+      calories: meal["Calories (kcal)"] ?? 0,
+      protein: meal["Protein (g)"] ?? 0,
+      fats: meal["Fat (g)"] ?? 0,
+      carbs: meal["Carbs (g)"] ?? 0,
+      fiber: meal["Fiber (g)"] ?? 0,
+      ingredients: meal["Ingredients"] || "",
+      notes: meal["Notes"] || "",
+      isFavorite: false,
+      addedByUser: true,
+      image: "/images/default.jpg",
     };
 
     try {
       const response = await axios.post(`${API_BASE}/save`, {
         userId: user.id,
         meal: mappedMeal,
-        date: currentDate, // ✅ Use tracked date
+        date: currentDate,
       });
 
       if (response.status === 200 || response.status === 201) {
@@ -610,7 +582,7 @@ useEffect(() => {
                         >
                           <div className="w-full text-left">
                             <h3 className="text-base font-bold leading-tight break-words">
-                              {meal.Dish || meal.name}
+                              {meal.Dish}
                             </h3>
                             <p className="text-xs md:text-sm font-medium mt-1 opacity-90">
                               {meal["Meal Type"]}
@@ -697,7 +669,7 @@ useEffect(() => {
                                 : "bg-green-600 text-white hover:bg-green-700"
                             }`}
                           >
-                            {addedMeals[category] === (meal.name || meal.Dish) ? "Added ✓" : "Add +"}
+                            {addedMeals[category] === meal.Dish ? "Added ✓" : "Add +"}
                           </button>
                         </div>
                       </div>
