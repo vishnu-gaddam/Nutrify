@@ -11,7 +11,7 @@ import {
 const API_HOST = process.env.REACT_APP_API_BASE || "http://localhost:5001";
 // Health endpoints
 const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
-
+const USER_API_BASE = `${API_HOST}/api/users`;
 // Health endpoints
 //const HEALTH_API_BASE = `${API_HOST}/api/health-data`;
 // Meals endpoint 
@@ -277,146 +277,133 @@ function Dashboard() {
   };
 
   // Fetch data from multiple sources
-    useEffect(() => {
-      if (!user?.id) {
-        setLoading(false);
-        setProfile(null);
-        setTodayData(null);
-        setWeeklyData([]);
-        setSavedMeals([]);
-        setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-        return;
-      }
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
 
-      const fetchData = async () => {
-        setLoading(true);
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const fetchData = async () => {
+      setLoading(true);
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-        try {
-          // TODAY'S HEALTH DATA
-          const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`, { headers });
-          const today = todayRes?.data || {};
-          setTodayData(today);
+      try {
+        // FETCH COMPLETE USER PROFILE
+        const userRes = await axios.get(`${USER_API_BASE}/me`, { headers });
+        const completeUser = userRes.data;
+        
+        // Set complete profile
+        const calculatedBMICategory = getBMICategory(completeUser.bmi);
+        const resolvedAge = completeUser.age || calculateAge(completeUser.birthDate) || null;
+        
+        setProfile({
+          ...completeUser,
+          age: resolvedAge,
+          bmiCategory: calculatedBMICategory
+        });
 
-          // WEEKLY HEALTH DATA  
-          const weeklyRes = await axios.get(`${HEALTH_API_BASE}/weekly?userId=${user.id}`, { headers });
-          const weekly = Array.isArray(weeklyRes?.data) ? weeklyRes.data : [];
-          setWeeklyData(weekly);
+        // TODAY'S HEALTH DATA
+        const todayRes = await axios.get(`${HEALTH_API_BASE}/today?userId=${user.id}`, { headers });
+        const today = todayRes?.data || {};
+        setTodayData(today);
 
-          // ✅ FETCH REAL MEALS FROM MEALS API (like NutritionTracking does)
-          const mealsApiBase = `${API_HOST}/api/meals`;
-          let realMeals = [];
-          let nutritionFromMeals = { calories: 0, protein: 0, fats: 0, fiber: 0 };
-          
-          try {
-            const mealsRes = await axios.get(`${mealsApiBase}/saved/${user.id}`, { headers });
-            const allMeals = mealsRes.data.meals || [];
-            
-            // ✅ FILTER MEALS FOR TODAY (same logic as NutritionTracking)
-            const getCurrentDate = () => {
-              return new Date().toISOString().split('T')[0];
-            };
-            
-            const isMealFromToday = (mealDate) => {
-              if (!mealDate) return false;
-              const mealDateObj = new Date(mealDate);
-              const mealDateString = mealDateObj.toISOString().split('T')[0];
-              return mealDateString === getCurrentDate();
-            };
-            
-            realMeals = allMeals.filter(meal => 
-              isMealFromToday(meal.addedAt || meal.createdAt || meal.date)
-            );
-            
-            // ✅ CALCULATE NUTRITION FROM REAL MEALS
-            nutritionFromMeals = realMeals.reduce(
-              (acc, meal) => {
-                acc.calories += meal.calories || 0;
-                acc.protein += meal.protein || 0;
-                acc.fats += meal.fats || 0;
-                acc.fiber += meal.fiber || 0;
-                return acc;
-              },
-              { calories: 0, protein: 0, fats: 0, fiber: 0 }
-            );
-            
-            setSavedMeals(realMeals);
-            setNutritionData(nutritionFromMeals);
-            
-          } catch (mealsError) {
-            console.warn("Could not fetch meals, falling back to health data:", mealsError);
-            
-            // ✅ FALLBACK: Use health data if meals API fails
-            const nutritionFromHealth = {
-              calories: today.calories || 0,
-              protein: today.protein || 0,
-              fats: today.fat || 0, // Note: health API uses 'fat', meals uses 'fats'
-              fiber: today.fiber || 0
-            };
-            
-            // Check if health data has actual nutrition values
-            const hasHealthNutrition = nutritionFromHealth.calories > 0 || 
-                                    nutritionFromHealth.protein > 0 || 
-                                    nutritionFromHealth.fats > 0 || 
-                                    nutritionFromHealth.fiber > 0;
-            
-            setSavedMeals(hasHealthNutrition ? [{ _id: 'health-data' }] : []);
-            setNutritionData(nutritionFromHealth);
-          }
+        // WEEKLY HEALTH DATA  
+        const weeklyRes = await axios.get(`${HEALTH_API_BASE}/weekly?userId=${user.id}`, { headers });
+        const weekly = Array.isArray(weeklyRes?.data) ? weeklyRes.data : [];
+        setWeeklyData(weekly);
 
-          // Set profile
-          const calculatedBMICategory = getBMICategory(user.bmi);
-          const resolvedAge = user.age || calculateAge(user.birthDate) || null;
+        // FETCH REAL MEALS
+        const mealsRes = await axios.get(`${API_HOST}/api/meals/saved/${user.id}`, { headers });
+        const allMeals = mealsRes.data.meals || [];
+        
+        // Filter meals for today
+        const getCurrentDate = () => {
+          return new Date().toISOString().split('T')[0];
+        };
+        
+        const isMealFromToday = (mealDate) => {
+          if (!mealDate) return false;
+          const mealDateObj = new Date(mealDate);
+          const mealDateString = mealDateObj.toISOString().split('T')[0];
+          return mealDateString === getCurrentDate();
+        };
+        
+        const todayMeals = allMeals.filter(meal => 
+          isMealFromToday(meal.addedAt || meal.createdAt || meal.date)
+        );
+        
+        setSavedMeals(todayMeals);
+        
+        // Calculate nutrition from real meals
+        const nutritionFromMeals = todayMeals.reduce(
+          (acc, meal) => {
+            acc.calories += meal.calories || 0;
+            acc.protein += meal.protein || 0;
+            acc.fats += meal.fats || 0;
+            acc.fiber += meal.fiber || 0;
+            return acc;
+          },
+          { calories: 0, protein: 0, fats: 0, fiber: 0 }
+        );
+        
+        setNutritionData(nutritionFromMeals);
 
-          setProfile({
-            ...user,
-            age: resolvedAge,
-            bmiCategory: calculatedBMICategory
-          });
-
-          // Set nutrition goals
-          if (user.bmi && (resolvedAge !== null)) {
-            const goals = getNutritionGoals(parseFloat(user.bmi), resolvedAge);
-            setNutritionGoals(goals);
-          } else {
-            setNutritionGoals({
-              calories: 2000,
-              protein: 65,
-              fats: 62,
-              fiber: 25
-            });
-          }
-
-        } catch (error) {
-          console.error("Error fetching dashboard data:", error);
-          
-          // Minimal fallback
-          setProfile({
-            ...user,
-            age: user.age || null,
-            bmiCategory: getBMICategory(user.bmi)
-          });
-
+        // Set nutrition goals
+        if (completeUser.bmi && (resolvedAge !== null)) {
+          const goals = getNutritionGoals(parseFloat(completeUser.bmi), resolvedAge);
+          setNutritionGoals(goals);
+        } else {
           setNutritionGoals({
             calories: 2000,
             protein: 65,
             fats: 62,
             fiber: 25
           });
-          
-          setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-          setSavedMeals([]);
-          setTodayData(null);
-          setWeeklyData([]);
-        } finally {
-          setLoading(false);
         }
-      };
 
-      fetchData();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.id, token]);
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        
+        // Try to at least get user profile
+        try {
+          const userRes = await axios.get(`${USER_API_BASE}/me`, { headers });
+          const completeUser = userRes.data;
+          const calculatedBMICategory = getBMICategory(completeUser.bmi);
+          const resolvedAge = completeUser.age || calculateAge(completeUser.birthDate) || null;
+          
+          setProfile({
+            ...completeUser,
+            age: resolvedAge,
+            bmiCategory: calculatedBMICategory
+          });
+        } catch (userError) {
+          // Fallback to auth context user
+          const calculatedBMICategory = getBMICategory(user.bmi);
+          const resolvedAge = user.age || calculateAge(user.birthDate) || null;
+          
+          setProfile({
+            ...user,
+            age: resolvedAge,
+            bmiCategory: calculatedBMICategory
+          });
+        }
+        
+        setNutritionGoals({
+          calories: 2000,
+          protein: 65,
+          fats: 62,
+          fiber: 25
+        });
+        
+        setNutritionData({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+        setSavedMeals([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchData();  // eslint-disable-next-line
+  }, [user?.id, token]);
 
   if (loading) {
     return (
