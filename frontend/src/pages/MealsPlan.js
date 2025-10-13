@@ -8,6 +8,7 @@ function MealsPlan() {
   const { user } = useAuth();
 
   // ✅ Track current date as state (ISO string like "2024-06-15")
+  // eslint-disable-next-line
   const [currentDate, setCurrentDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
@@ -149,17 +150,74 @@ function MealsPlan() {
   }, [user?.id, currentDate]); // ✅ Depend on currentDate
 
   // ✅ RESET ALL NUTRITION & MEAL STATE WHEN DATE CHANGES
-  useEffect(() => {
+ // ✅ Fetch saved meals for the CURRENT DATE — with pre-reset
+useEffect(() => {
+  if (!user?.id) {
+    // Clear state if no user
     setAddedMeals({});
     setSavedMealIds(new Set());
-    setAddedNutrients({
-      calories: 0,
-      protein: 0,
-      fats: 0,
-      fiber: 0,
-    });
+    setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+    return;
+  }
+
+  const fetchSavedMeals = async () => {
+    // ✅ CRITICAL: Reset state BEFORE fetching to avoid stale UI
+    setAddedMeals({});
+    setSavedMealIds(new Set());
+    setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
     setError("");
-  }, [currentDate]);
+
+    try {
+      const res = await axios.get(`${API_BASE}/saved/${user.id}`);
+      const allMeals = res.data.meals || [];
+
+      // Normalize current date (YYYY-MM-DD)
+      const targetDateStr = currentDate; // e.g., "2024-10-13"
+
+      const todayMeals = allMeals.filter(meal => {
+        if (!meal.addedAt && !meal.createdAt) return false;
+
+        // Extract date part from meal timestamp (handles ISO strings)
+        const mealDateStr = new Date(meal.addedAt || meal.createdAt)
+          .toISOString()
+          .split('T')[0];
+
+        return mealDateStr === targetDateStr;
+      });
+
+      // Only now populate state with TODAY'S meals
+      const categoryMap = {};
+      const idSet = new Set();
+      const nutrients = { calories: 0, protein: 0, fats: 0, fiber: 0 };
+
+      todayMeals.forEach(meal => {
+        if (meal.category) {
+          categoryMap[meal.category] = meal.name;
+        }
+        if (meal._id) {
+          idSet.add(meal._id);
+        }
+        nutrients.calories += meal.calories || 0;
+        nutrients.protein += meal.protein || 0;
+        nutrients.fats += meal.fats || 0;
+        nutrients.fiber += meal.fiber || 0;
+      });
+
+      setAddedMeals(categoryMap);
+      setSavedMealIds(idSet);
+      setAddedNutrients(nutrients);
+
+    } catch (err) {
+      console.error("Failed to fetch saved meals:", err);
+      // Keep state cleared on error
+      setAddedMeals({});
+      setSavedMealIds(new Set());
+      setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+    }
+  };
+
+  fetchSavedMeals();
+}, [user?.id, currentDate]); // Re-run when user or date changes
 
   const handleFilterChange = (e) =>
     setFilters({ ...filters, [e.target.name]: e.target.value });
