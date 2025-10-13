@@ -18,37 +18,49 @@ dotenv.config();
 // Initialize Express app
 const app = express();
 
+
 // ✅ Allowed origins
 const allowedOrigins =
   process.env.NODE_ENV === "production"
-    ? ["https://nutrify-n.vercel.app",
-      "https://nutrify-ny.vercel.app"]
+    ? [
+        "https://nutrify-n.vercel.app",
+        "https://nutrify-ny.vercel.app",
+        "https://nutrify-n.onrender.com",
+        "https://nutrify-1-f0vl.onrender.com"
+      ]
     : ["http://localhost:3000", "http://127.0.0.1:3000"];
 
-// ✅ CORS middleware
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        console.warn("❌ Blocked by CORS:", origin);
-        callback(null, false); // deny silently, no 500 error
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
+    // ✅ CORS middleware for all routes
+    app.use(
+      cors({
+        origin: (origin, callback) => {
+          // allow requests with no origin (like Postman or server-to-server)
+          if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            console.warn("❌ Blocked by CORS:", origin);
+            callback(new Error("Not allowed by CORS")); // send proper error for disallowed origin
+          }
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+        credentials: true, // allow cookies
+      })
+    );
 
-// ✅ Handle preflight OPTIONS request globally
-app.options("*", cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+    // ✅ Preflight (OPTIONS) requests
+    app.options("*", cors({
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error("Not allowed by CORS"));
+        }
+      },
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true,
+    }));
 
 // Middleware for parsing request bodies
 app.use(express.json());
