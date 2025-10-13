@@ -4,7 +4,7 @@ import { useAuth } from "../utils/authContext";
 
 // Import your meals database
 // import mealsDatabase from "../data/meals_database.json";
-import mealsDatabase from '../../backend/meals_database.json';
+//import mealsDatabase from '../../backend/meals_database.json';
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
 
@@ -16,6 +16,21 @@ function MealsPlan() {
   const [currentDate, setCurrentDate] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+
+  const [mealsDatabase, setMealsDatabase] = useState([]);
+
+useEffect(() => {
+  const fetchMealsDatabase = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}`);
+      setMealsDatabase(res.data);
+    } catch (err) {
+      console.error("Failed to fetch meals database:", err);
+    }
+  };
+  fetchMealsDatabase();
+}, []);
+
 
   const [plan, setPlan] = useState({});
   const [loading, setLoading] = useState(false);
@@ -182,10 +197,16 @@ function MealsPlan() {
       )?.label || "21–30";
 
       // Filter meals for user profile
-      const filteredMeals = mealsDatabase.filter(meal => 
-        meal["Age Group"] === ageGroup && 
-        meal["BMI Category"].includes(bmiCategory)
-      );
+      if (mealsDatabase.length === 0) {
+  alert("Meals data is still loading. Please wait a moment.");
+  return;
+}
+
+const filteredMeals = mealsDatabase.filter(meal =>
+  meal["Age Group"] === ageGroup &&
+  meal["BMI Category"].includes(bmiCategory)
+);
+
 
       // Group by meal type
       const mealTypes = ["Breakfast", "Lunch", "Snack", "Dinner"];
