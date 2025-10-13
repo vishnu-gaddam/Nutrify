@@ -207,10 +207,9 @@ const HealthAnalytics = () => {
   };
 
   // Calculate metrics for comparison
-  const calculateComparison = () => {
+    const calculateComparison = () => {
     if (!weeklyData.length || !lastWeekData.length) return null;
     
-    // Calculate averages for this week and last week
     const thisWeek = weeklyData.reduce((acc, day) => {
       acc.steps += day.steps || 0;
       acc.water += day.water || 0;
@@ -235,30 +234,29 @@ const HealthAnalytics = () => {
       return acc;
     }, { steps: 0, water: 0, sleep: 0, exercise: 0, calories: 0, protein: 0, fat: 0, fiber: 0 });
     
-    // Calculate averages
+    // ✅ CHANGED: Use actual data length
     const thisWeekAvg = {
-      steps: Math.round(thisWeek.steps / 7),
-      water: Math.round(thisWeek.water / 7),
-      sleep: parseFloat((thisWeek.sleep / 7).toFixed(1)),
-      exercise: Math.round(thisWeek.exercise / 7),
-      calories: Math.round(thisWeek.calories / 7),
-      protein: Math.round(thisWeek.protein / 7),
-      fat: Math.round(thisWeek.fat / 7),
-      fiber: Math.round(thisWeek.fiber / 7)
+      steps: Math.round(thisWeek.steps / weeklyData.length),
+      water: Math.round(thisWeek.water / weeklyData.length),
+      sleep: parseFloat((thisWeek.sleep / weeklyData.length).toFixed(1)),
+      exercise: Math.round(thisWeek.exercise / weeklyData.length),
+      calories: Math.round(thisWeek.calories / weeklyData.length),
+      protein: Math.round(thisWeek.protein / weeklyData.length),
+      fat: Math.round(thisWeek.fat / weeklyData.length),
+      fiber: Math.round(thisWeek.fiber / weeklyData.length)
     };
     
     const lastWeekAvg = {
-      steps: Math.round(lastWeek.steps / 7),
-      water: Math.round(lastWeek.water / 7),
-      sleep: parseFloat((lastWeek.sleep / 7).toFixed(1)),
-      exercise: Math.round(lastWeek.exercise / 7),
-      calories: Math.round(lastWeek.calories / 7),
-      protein: Math.round(lastWeek.protein / 7),
-      fat: Math.round(lastWeek.fat / 7),
-      fiber: Math.round(lastWeek.fiber / 7)
+      steps: Math.round(lastWeek.steps / lastWeekData.length),
+      water: Math.round(lastWeek.water / lastWeekData.length),
+      sleep: parseFloat((lastWeek.sleep / lastWeekData.length).toFixed(1)),
+      exercise: Math.round(lastWeek.exercise / lastWeekData.length),
+      calories: Math.round(lastWeek.calories / lastWeekData.length),
+      protein: Math.round(lastWeek.protein / lastWeekData.length),
+      fat: Math.round(lastWeek.fat / lastWeekData.length),
+      fiber: Math.round(lastWeek.fiber / lastWeekData.length)
     };
     
-    // Calculate percentage changes
     const getPercentageChange = (current, previous) => {
       if (previous === 0) return current > 0 ? 100 : 0;
       return Math.round(((current - previous) / previous) * 100);
@@ -287,8 +285,11 @@ const HealthAnalytics = () => {
       }
     };
   };
-
   const comparison = calculateComparison();
+
+  const weeklySleepAvg = weeklyData.length 
+  ? parseFloat((weeklyData.reduce((sum, day) => sum + (day.sleep || 0), 0) / weeklyData.length).toFixed(1))
+  : 0;
 
   // Generate AI Health Insights
   const getAIInsights = () => {
@@ -499,141 +500,158 @@ useEffect(() => {
           </div>
 
           {/* Hydration Card */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-xl text-gray-800">Hydration</h2>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">{todayData?.water || 0}</div>
-                <div className="text-xs text-gray-600">Glasses</div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-bold text-xl text-gray-800">Hydration</h2>
               </div>
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">{((todayData?.water || 0) * 0.25).toFixed(1)}L</div>
-                <div className="text-xs text-gray-600">Total Water</div>
-              </div>
-            </div>
-            
-            {/* Today's Hydration Goal - based on today's actual intake */}
-            <div className="mt-6">
-              <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Today's Hydration Goal</span>
-                <span>{todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="h-2 rounded-full bg-green-500" 
-                  style={{ width: `${todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            {/* Weekly Hydration Rate - keep this separate */}
-            <div className="mt-4">
-              <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Weekly Hydration Rate</span>
-                <span>{healthStats.hydrationRate || 0}%</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                Based on {weeklyData.length} days this week
-              </div>
-            </div>
-          </div>
-
-        {/* Sleep Card */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-xl text-gray-800">Sleep</h2>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">{todayData?.sleep || 0}h</div>
-                <div className="text-xs text-gray-600">Last Night</div>
-              </div>
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">
-                  {todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 8) * 100)) : 0}%
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{todayData?.water || 0}</div>
+                  <div className="text-xs text-gray-600">Glasses</div>
                 </div>
-                <div className="text-xs text-gray-600">Quality</div>
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{((todayData?.water || 0) * 0.25).toFixed(1)}L</div>
+                  <div className="text-xs text-gray-600">Total Water</div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <div className="flex justify-between text-sm text-gray-700 mb-1">
+                  <span>Today's Hydration Goal</span>
+                  <span>{todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="h-2 rounded-full bg-green-500" 
+                    style={{ width: `${todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <div className="flex justify-between text-sm text-gray-700 mb-1">
+                  <span>Weekly Hydration Rate</span>
+                  <span>{healthStats.hydrationRate || 0}%</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Based on {weeklyData.length} days this week
+                </div>
               </div>
             </div>
-            
-            {/* Today's Sleep Goal Progress */}
-            <div className="mt-6">
-              <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Sleep Goal (7h)</span>
-                <span>{todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 7) * 100)) : 0}%</span>
+            {/* Sleep Card */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-bold text-xl text-gray-800">Sleep</h2>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="h-2 rounded-full bg-blue-500" 
-                  style={{ width: `${todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 7) * 100)) : 0}%` }}
-                ></div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{todayData?.sleep || 0}h</div>
+                  <div className="text-xs text-gray-600">Last Night</div>
+                </div>
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">
+                    {todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 8) * 100)) : 0}%
+                  </div>
+                  <div className="text-xs text-gray-600">Quality</div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <div className="flex justify-between text-sm text-gray-700 mb-1">
+                  <span>Sleep Goal (7h)</span>
+                  <span>{todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 7) * 100)) : 0}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="h-2 rounded-full bg-blue-500" 
+                    style={{ width: `${todayData?.sleep ? Math.min(100, Math.round((todayData.sleep / 7) * 100)) : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="flex justify-between text-sm text-gray-700 mb-1">
+                  <span>Weekly Sleep Avg</span>
+                  <span>{weeklySleepAvg}h</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Based on {weeklyData.length} days this week
+                </div>
               </div>
             </div>
-          </div>
 
        {/* Activity Card */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-xl text-gray-800">Activity</h2>
-            </div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-bold text-xl text-gray-800">Activity</h2>
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">{todayData?.steps || 0}</div>
-                <div className="text-xs text-gray-600">Steps</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{todayData?.steps || 0}</div>
+                  <div className="text-xs text-gray-600">Steps</div>
+                </div>
+                <div className="bg-gray-100 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-800">{todayData?.exercise || 0}min</div>
+                  <div className="text-xs text-gray-600">Exercise</div>
+                </div>
               </div>
-              <div className="bg-gray-100 rounded-lg p-4 text-center">
-                <div className="text-2xl font-bold text-gray-800">{todayData?.exercise || 0}min</div>
-                <div className="text-xs text-gray-600">Exercise</div>
+              
+              <div className="mt-6">
+                {todayData ? (
+                  <>
+                    {(() => {
+                      const stepsProgress = todayData.steps ? Math.min(100, Math.round((todayData.steps / 10000) * 100)) : 0;
+                      const exerciseProgress = todayData.exercise ? Math.min(100, Math.round((todayData.exercise / 30) * 100)) : 0;
+                      const avgProgress = Math.round((stepsProgress + exerciseProgress) / 2);
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm text-gray-700 mb-1">
+                            <span>Activity Goal</span>
+                            <span>{avgProgress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="h-2 rounded-full bg-indigo-500" 
+                              style={{ width: `${avgProgress}%` }}
+                            ></div>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Based on 10k steps & 30min exercise
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm text-gray-700 mb-1">
+                      <span>Activity Goal</span>
+                      <span>0%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 rounded-full bg-indigo-500" style={{ width: '0%' }}></div>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Based on 10k steps & 30min exercise
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-4">
+                <div className="flex justify-between text-sm text-gray-700 mb-1">
+                  <span>Weekly Activity Rate</span>
+                  <span>{healthStats.weeklyGoalCompletion || 0}%</span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Based on {weeklyData.length} days this week
+                </div>
               </div>
             </div>
-            
-            {/* Today's Activity Goal Progress */}
-            <div className="mt-6">
-              {todayData ? (
-                <>
-                  {/* Calculate today's activity progress */}
-                  {(() => {
-                    const stepsProgress = todayData.steps ? Math.min(100, Math.round((todayData.steps / 10000) * 100)) : 0;
-                    const exerciseProgress = todayData.exercise ? Math.min(100, Math.round((todayData.exercise / 30) * 100)) : 0;
-                    const avgProgress = Math.round((stepsProgress + exerciseProgress) / 2);
-                    
-                    return (
-                      <>
-                        <div className="flex justify-between text-sm text-gray-700 mb-1">
-                          <span>Activity Goal</span>
-                          <span>{avgProgress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="h-2 rounded-full bg-indigo-500" 
-                            style={{ width: `${avgProgress}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Based on 10k steps & 30min exercise
-                        </div>
-                      </>
-                    );
-                  })()}
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between text-sm text-gray-700 mb-1">
-                    <span>Activity Goal</span>
-                    <span>0%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="h-2 rounded-full bg-indigo-500" style={{ width: '0%' }}></div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Data Visualization Section */}

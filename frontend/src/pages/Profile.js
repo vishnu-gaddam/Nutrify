@@ -30,17 +30,24 @@ const Profile = () => {
         const allMeals = weeklyRes.data.meals || [];
         setWeeklyMeals(allMeals);
         
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        // Get today's date in YYYY-MM-DD format (local timezone)
+        const today = new Date();
+        const todayString = today.toLocaleDateString('en-CA'); // "YYYY-MM-DD"
         
+        // Filter meals for today and remove duplicates
         const todayMeals = allMeals.filter(meal => {
           if (!meal.addedAt) return false;
           const mealDate = new Date(meal.addedAt);
-          return mealDate >= todayStart && mealDate < todayEnd;
+          const mealDateString = mealDate.toLocaleDateString('en-CA');
+          return mealDateString === todayString;
         });
         
-        setSavedMeals(todayMeals);
+        // Remove duplicate meals (same _id)
+        const uniqueTodayMeals = todayMeals.filter((meal, index, self) =>
+          index === self.findIndex(m => m._id === meal._id)
+        );
+        
+        setSavedMeals(uniqueTodayMeals);
       } catch (err) {
         console.error("Failed to fetch saved meals:", err);
         setSavedMeals([]);
