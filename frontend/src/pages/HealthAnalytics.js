@@ -332,11 +332,16 @@ const HealthAnalytics = () => {
   // Chart data preparation
 // Hydration Pie / Bar Chart Data
 const hydrationChartData = {
-  labels: ['Hydrated', 'Not Hydrated'],
+  labels: weeklyData.map(day => 
+    new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })
+  ),
   datasets: [
     {
-      data: [healthStats.hydrationRate || 0, 100 - (healthStats.hydrationRate || 0)],
-      backgroundColor: ['#34D399', '#F87171']
+      label: 'Daily Water Intake (glasses)',
+      data: weeklyData.map(day => day.water || 0),
+      backgroundColor: '#34D399',
+      borderColor: '#10B981',
+      borderWidth: 1
     }
   ]
 };
@@ -497,7 +502,6 @@ useEffect(() => {
           <div className="bg-white rounded-xl shadow-md p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold text-xl text-gray-800">Hydration</h2>
-              
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -511,16 +515,28 @@ useEffect(() => {
               </div>
             </div>
             
+            {/* Today's Hydration Goal - based on today's actual intake */}
             <div className="mt-6">
               <div className="flex justify-between text-sm text-gray-700 mb-1">
-                <span>Hydration Goal</span>
-                <span>{healthStats.hydrationRate || 0}%</span>
+                <span>Today's Hydration Goal</span>
+                <span>{todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
                   className="h-2 rounded-full bg-green-500" 
-                  style={{ width: `${healthStats.hydrationRate || 0}%` }}
+                  style={{ width: `${todayData?.water ? Math.min(100, Math.round((todayData.water / 8) * 100)) : 0}%` }}
                 ></div>
+              </div>
+            </div>
+            
+            {/* Weekly Hydration Rate - keep this separate */}
+            <div className="mt-4">
+              <div className="flex justify-between text-sm text-gray-700 mb-1">
+                <span>Weekly Hydration Rate</span>
+                <span>{healthStats.hydrationRate || 0}%</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Based on {weeklyData.length} days this week
               </div>
             </div>
           </div>
@@ -601,9 +617,30 @@ useEffect(() => {
 
           {/* Hydration Progress */}
           <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="font-bold text-xl text-gray-800 mb-4">Hydration Progress</h3>
+            <h3 className="font-bold text-xl text-gray-800 mb-4">Weekly Hydration Trend</h3>
             <div className="h-64">
-              <Bar data={hydrationChartData} options={{ responsive: true, maintainAspectRatio: false }} />
+              <Bar 
+                data={hydrationChartData} 
+                options={{ 
+                  responsive: true, 
+                  maintainAspectRatio: false,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      title: {
+                        display: true,
+                        text: 'Glasses of Water'
+                      }
+                    },
+                    x: {
+                      title: {
+                        display: true,
+                        text: 'Days of Week'
+                      }
+                    }
+                  }
+                }} 
+              />
             </div>
           </div>
 
