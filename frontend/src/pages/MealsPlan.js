@@ -3,7 +3,8 @@ import axios from "axios";
 import { useAuth } from "../utils/authContext";
 
 // Import your meals database
-import mealsDatabase from "../data/meals_database.json";
+// import mealsDatabase from "../data/meals_database.json";
+import mealsDatabase from '../../backend/meals_database.json';
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
 
