@@ -22,6 +22,7 @@ const app = express();
 const allowedOrigins =
   process.env.NODE_ENV === "production"
     ? ["https://nutrify-n.vercel.app"] 
+      ["https://nutrify-ny.vercel.app"]
     : ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 // ✅ CORS middleware
