@@ -20,43 +20,43 @@ const Profile = () => {
   const [savedMeals, setSavedMeals] = useState([]);
   const [weeklyMeals, setWeeklyMeals] = useState([]);
 
-  // Fetch saved meals for stats
-  useEffect(() => {
-    if (!user?.id) return;
+ // Fetch saved meals for stats
+    useEffect(() => {
+      if (!user?.id) return;
 
-    const fetchSavedMeals = async () => {
-      try {
-        const weeklyRes = await axios.get(`${API_BASE}/saved/${user.id}`);
-        const allMeals = weeklyRes.data.meals || [];
-        setWeeklyMeals(allMeals);
-        
-        // Get today's date in YYYY-MM-DD format (local timezone)
-        const today = new Date();
-        const todayString = today.toLocaleDateString('en-CA'); // "YYYY-MM-DD"
-        
-        // Filter meals for today and remove duplicates
-        const todayMeals = allMeals.filter(meal => {
-          if (!meal.addedAt) return false;
-          const mealDate = new Date(meal.addedAt);
-          const mealDateString = mealDate.toLocaleDateString('en-CA');
-          return mealDateString === todayString;
-        });
-        
-        // Remove duplicate meals (same _id)
-        const uniqueTodayMeals = todayMeals.filter((meal, index, self) =>
-          index === self.findIndex(m => m._id === meal._id)
-        );
-        
-        setSavedMeals(uniqueTodayMeals);
-      } catch (err) {
-        console.error("Failed to fetch saved meals:", err);
-        setSavedMeals([]);
-        setWeeklyMeals([]);
-      }
-    };
+      // ✅ EXTRACTED FROM NUTRITION TRACKING - CORRECT LOGIC
+      const getCurrentDate = () => {
+        return new Date().toISOString().split('T')[0];
+      };
+      
+      const isMealFromToday = (mealDate) => {
+        if (!mealDate) return false;
+        const mealDateObj = new Date(mealDate);
+        const mealDateString = mealDateObj.toISOString().split('T')[0];
+        return mealDateString === getCurrentDate();
+      };
 
-    fetchSavedMeals();
-  }, [user?.id]);
+      const fetchSavedMeals = async () => {
+        try {
+          const weeklyRes = await axios.get(`${API_BASE}/saved/${user.id}`);
+          const allMeals = weeklyRes.data.meals || [];
+          setWeeklyMeals(allMeals);
+          
+          // ✅ Use the same filtering logic as NutritionTracking
+          const todayMeals = allMeals.filter(meal => 
+            isMealFromToday(meal.addedAt || meal.createdAt || meal.date)
+          );
+          
+          setSavedMeals(todayMeals);
+        } catch (err) {
+          console.error("Failed to fetch saved meals:", err);
+          setSavedMeals([]);
+          setWeeklyMeals([]);
+        }
+      };
+
+      fetchSavedMeals();
+    }, [user?.id]);
 
   // ✅ FETCH USER DATA FROM BACKEND ON LOAD
   useEffect(() => {
