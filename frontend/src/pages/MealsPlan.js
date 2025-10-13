@@ -2,12 +2,16 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../utils/authContext";
 
-//const API_BASE = "http://localhost:5001/api/meals";
 const API_BASE = process.env.REACT_APP_API_BASE_URL + "/api/meals";
-
 
 function MealsPlan() {
   const { user } = useAuth();
+
+  // ✅ Track current date as state (ISO string like "2024-06-15")
+  const [currentDate, setCurrentDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
   const [plan, setPlan] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -15,21 +19,14 @@ function MealsPlan() {
     mealType: "All",
     bmiCategory: "All",
   });
-  
-  // ✅ Get current date in ISO format for API calls
-  const getCurrentDateISO = () => {
-    return new Date().toISOString().split('T')[0];
-  };
-  
-  const currentDateISO = getCurrentDateISO();
-  
-  // ✅ Display date for UI
-  const currentDateDisplay = new Date().toLocaleDateString('en-US', { 
+
+  // ✅ Display date for UI (based on tracked currentDate)
+  const currentDateDisplay = new Date(currentDate).toLocaleDateString('en-US', { 
     weekday: 'short', 
     month: 'short', 
     day: 'numeric' 
   });
-  
+
   const [addedMeals, setAddedMeals] = useState({}); // category → mealName
   const [savedMealIds, setSavedMealIds] = useState(new Set()); // track saved meal _ids
   const [addedNutrients, setAddedNutrients] = useState({
@@ -96,69 +93,63 @@ function MealsPlan() {
     }
   }, [user?.bmi, user?.age]);
 
-  // ✅ Fetch saved meals for TODAY - include currentDateISO in dependencies
-// Fetch saved meals and filter by today's date on frontend
-useEffect(() => {
-  if (!user?.id) return;
+  // ✅ Fetch saved meals for the CURRENT DATE (tracked in state)
+  useEffect(() => {
+    if (!user?.id) return;
 
-  const fetchSavedMeals = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/saved/${user.id}`);
-      const allMeals = res.data.meals || [];
-      
-      // Create date for today (start of day)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Filter meals that were added today
-      const todayMeals = allMeals.filter(meal => {
-        const mealDateField = meal.addedAt || meal.createdAt;
-        if (!mealDateField) return false;
+    const fetchSavedMeals = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/saved/${user.id}`);
+        const allMeals = res.data.meals || [];
         
-        const mealDate = new Date(mealDateField);
-        mealDate.setHours(0, 0, 0, 0);
+        // Use the tracked currentDate
+        const today = new Date(currentDate);
+        today.setHours(0, 0, 0, 0);
         
-        return mealDate.getTime() === today.getTime();
-      });
+        const todayMeals = allMeals.filter(meal => {
+          const mealDateField = meal.addedAt || meal.createdAt;
+          if (!mealDateField) return false;
+          
+          const mealDate = new Date(mealDateField);
+          mealDate.setHours(0, 0, 0, 0);
+          
+          return mealDate.getTime() === today.getTime();
+        });
 
-      // Process today's meals
-      const categoryMap = {};
-      const idSet = new Set();
-      const nutrients = { calories: 0, protein: 0, fats: 0, fiber: 0 };
-      
-      todayMeals.forEach(meal => {
-        if (meal.category) {
-          categoryMap[meal.category] = meal.name;
-        }
-        if (meal._id) {
-          idSet.add(meal._id);
-        }
-        nutrients.calories += meal.calories || 0;
-        nutrients.protein += meal.protein || 0;
-        nutrients.fats += meal.fats || 0;
-        nutrients.fiber += meal.fiber || 0;
-      });
-      
-      setAddedMeals(categoryMap);
-      setSavedMealIds(idSet);
-      setAddedNutrients(nutrients);
-      
-    } catch (err) {
-      console.error("Failed to fetch saved meals:", err);
-      // Reset to empty state
-      setAddedMeals({});
-      setSavedMealIds(new Set());
-      setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
-    }
-  };
+        const categoryMap = {};
+        const idSet = new Set();
+        const nutrients = { calories: 0, protein: 0, fats: 0, fiber: 0 };
+        
+        todayMeals.forEach(meal => {
+          if (meal.category) {
+            categoryMap[meal.category] = meal.name;
+          }
+          if (meal._id) {
+            idSet.add(meal._id);
+          }
+          nutrients.calories += meal.calories || 0;
+          nutrients.protein += meal.protein || 0;
+          nutrients.fats += meal.fats || 0;
+          nutrients.fiber += meal.fiber || 0;
+        });
+        
+        setAddedMeals(categoryMap);
+        setSavedMealIds(idSet);
+        setAddedNutrients(nutrients);
+        
+      } catch (err) {
+        console.error("Failed to fetch saved meals:", err);
+        setAddedMeals({});
+        setSavedMealIds(new Set());
+        setAddedNutrients({ calories: 0, protein: 0, fats: 0, fiber: 0 });
+      }
+    };
 
-  fetchSavedMeals();
-}, [user?.id]);
+    fetchSavedMeals();
+  }, [user?.id, currentDate]); // ✅ Depend on currentDate
 
-  // ✅ RESET FUNCTION - Call this whenever you need to reset everything
-  // eslint-disable-next-line
-  const resetAllValues = () => {
-    setPlan({});
+  // ✅ RESET ALL NUTRITION & MEAL STATE WHEN DATE CHANGES
+  useEffect(() => {
     setAddedMeals({});
     setSavedMealIds(new Set());
     setAddedNutrients({
@@ -168,7 +159,7 @@ useEffect(() => {
       fiber: 0,
     });
     setError("");
-  };
+  }, [currentDate]);
 
   const handleFilterChange = (e) =>
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -182,12 +173,11 @@ useEffect(() => {
     setError("");
 
     try {
-      const today = new Date().toISOString().split('T')[0];
       const { data } = await axios.post(`${API_BASE}/plan`, {
         bmi: user.bmi,
         age: user.age,
         userId: user.id,
-        date: today,
+        date: currentDate, // ✅ Use tracked date
       });
       setPlan(data.plan || {});
     } catch (err) {
@@ -228,7 +218,7 @@ useEffect(() => {
       const response = await axios.post(`${API_BASE}/save`, {
         userId: user.id,
         meal: mappedMeal,
-        date: currentDateISO, // ✅ Include date when saving
+        date: currentDate, // ✅ Use tracked date
       });
 
       if (response.status === 200 || response.status === 201) {

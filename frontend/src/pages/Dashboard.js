@@ -143,14 +143,14 @@ function Dashboard() {
   // IMPORTANT: include token from auth context if available
   const { user, token } = useAuth(); // <-- token used for Authorization header
   const navigate = useNavigate();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(null);// eslint-disable-next-line
   const [todayData, setTodayData] = useState(null);
   const [weeklyData, setWeeklyData] = useState([]);
   const [savedMeals, setSavedMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [nutritionData, setNutritionData] = useState({
     calories: 0, protein: 0, fats: 0, fiber: 0
-  });
+  });// eslint-disable-next-line
   const [nutritionGoals, setNutritionGoals] = useState({
     calories: 2000, protein: 75, fats: 60, fiber: 25
   });
