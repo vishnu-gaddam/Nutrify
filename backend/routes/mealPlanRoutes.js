@@ -22,6 +22,19 @@ try {
   mealsData = [];
 }
 
+// GET /api/meals — return all meals JSON
+router.get("/", (req, res) => {
+  try {
+    if (!mealsData || mealsData.length === 0) {
+      return res.status(404).json({ error: "No meals found" });
+    }
+    return res.json(mealsData);
+  } catch (err) {
+    console.error("Error fetching meals:", err);
+    return res.status(500).json({ error: "Failed to fetch meals" });
+  }
+});
+
 // Helper: BMI Category
 function mapBmiToCategoryLabel(bmi) {
   if (bmi < 18.5) return "underweight";
